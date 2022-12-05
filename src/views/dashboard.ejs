@@ -1,0 +1,173 @@
+<% include partials/_header %>
+    <style>
+        .table-container {
+            width: 100%;
+            overflow-y: scroll;
+        }
+    </style>
+    <div class="container mt-5">
+        <div id="seedContainer" class="row">
+            <div class="col-12"><canvas id="pieSeeds" style="width: 100%; min-height: 400px"></canvas></div>
+            <div class="col-12 mt-3"><canvas id="lineSeeds" style="width: 100%; min-height: 400px"></canvas></div>
+            <div class="col-12 mt-3">
+                <table id="tableSeeds">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>excel_id</th>
+                            <th>seed_rep_date</th>
+                            <th>seed_year</th>
+                            <th>seeds_year_week</th>
+                            <th>seed_varity</th>
+                            <th>seed_RDCSD</th>
+                            <th>seed_stock_to_sale</th>
+                            <th>seed_season</th>
+                            <th>seed_crop_year</th>
+                            <th>active</th>
+                            <th>created_at</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-12 mt-3">
+                <div id="map"></div>
+                <div id="map2"></div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="/mapdata.js"></script>
+    <script src="/countrymap.js"></script>
+
+    <script>
+
+        let seedsData = [];
+        let mapData = [];
+        $(document).ready(async () => {
+            await init()
+
+            setTimeout(() => {
+                $("#map_inner div a").remove();
+            }, 100)
+        });
+        /**
+ * @license
+ * Copyright 2019 Google LLC. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+        // simplemaps_worldmap.hooks.ready = function () {
+        //     // optionally update simplemaps_worldmap.mapdata
+        //     simplemaps_worldmap.load();
+        // }
+        const getAllSeedsData = async () => {
+            const res = await axios.get('/seeds/all');
+            seedsData = res.data;
+            if (seedsData.status == false) {
+                alert('Not found seeds, Import first');
+                window.location.href = '/import-csv';
+            }
+            console.log(seedsData);
+        }
+
+
+
+        const init = async () => {
+            await getAllSeedsData();
+
+            let labels = [];
+            let data = [];
+            let template = "";
+            seedsData.items.map((val, index) => {
+                labels.push(`${val.seed_varity} ${val.seed_RDCSD}`);
+                data.push(`${val.seed_stock_to_sale}`);
+                template += "<tr>";
+                template += `<td>${index + 1}</td>`;
+                template += `<td>${val.excel_id}</td>`;
+                template += `<td>${val.seed_rep_date}</td>`;
+                template += `<td>${val.seed_year}</td>`;
+                template += `<td>${val.seeds_year_week}</td>`;
+                template += `<td>${val.seed_varity}</td>`;
+                template += `<td>${val.seed_RDCSD}</td>`;
+                template += `<td>${val.seed_stock_to_sale}</td>`;
+                template += `<td>${val.seed_season}</td>`;
+                template += `<td>${val.seed_crop_year}</td>`;
+                template += `<td>${val.active}</td>`;
+                template += `<td>${val.created_at}</td>`;
+                template += "</tr>";
+                for (const [key, value] of Object.entries(simplemaps_countrymap_mapdata.state_specific)) {
+                    // console.log(`${key}: ${value}`);
+                    if (value.mapId == val.seed_RDCSD) {
+                        simplemaps_countrymap_mapdata.state_specific[key].description = `Seeds_stock_to_sales: ${val.seed_stock_to_sale}`;
+                        simplemaps_countrymap_mapdata.state_specific[key].color = getRandomColor();
+                        break;
+                    }
+                }
+
+            })
+            // console.log(simplemaps_countrymap_mapdata.state_specific)
+            simplemaps_countrymap_mapdata.main_settings.auto_load = 'yes';
+            const pieLabels = {
+                labels,
+                precision: 2,
+                render: 'percentage'
+            };
+
+            createTable(template);
+            createGarph(pieLabels, data, 'pieSeeds', 'pie');
+            createGarph(labels, data, 'lineSeeds', 'line');
+            createMap();
+
+        }
+
+        const createMap = () => {
+            const script = document.createElement('script');
+            script.src = "/countrymap.js";
+            document.body.appendChild(script);
+
+        }
+
+        const createTable = (template) => {
+            $('#tableSeeds tbody').append(template)
+            $('#tableSeeds').DataTable();
+            $('#tableSeeds').wrap('<div class="table-container"></div>');
+        }
+
+        const createGarph = (labels, data, idCanvas, type = 'bar') => {
+            const ctx = document.getElementById(idCanvas);
+            new Chart(ctx, {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '# Seeds stock sales',
+                        data: data,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+    </script>
+
+    <% include partials/_footer %>
